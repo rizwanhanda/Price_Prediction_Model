@@ -33,6 +33,12 @@ st.markdown("""
         gap: 1px;
         padding-top: 10px;
         padding-bottom: 10px;
+        color: #31333F; /* FIX: Force dark text for unselected tabs */
+    }
+    .stTabs [aria-selected="true"] {
+        background-color: #ffffff;
+        color: #ff4b4b; /* FIX: Accent color for selected tab text */
+        border-top: 2px solid #ff4b4b;
     }
     div[data-testid="stMetricValue"] {
         font-size: 1.8rem;
@@ -131,7 +137,7 @@ if st.button("✨ Generate Market Analysis", type="primary"):
     # Verdict Banner
     if not engine_mode.startswith("🛡️"):
         if diff > 50:
-            st.success(f"✅ **Strong Buy:** Undervalued by **${diff:,.2f}**.")
+            st.success(f"✅ **Strong Buy:** Undervalued by **${diff:,.2f}**. The AI suggests the market would pay more.")
         elif diff < -50:
             st.warning(f"⚠️ **Caution:** Overpriced by **${abs(diff):,.2f}**.")
         else:
