@@ -22,8 +22,20 @@ st.markdown("""
         padding: 20px;
         box-shadow: 2px 2px 10px rgba(0,0,0,0.1);
     }
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 24px;
+    }
+    .stTabs [data-baseweb="tab"] {
+        height: 50px;
+        white-space: pre-wrap;
+        background-color: #f0f2f6;
+        border-radius: 4px 4px 0px 0px;
+        gap: 1px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
     div[data-testid="stMetricValue"] {
-        font-size: 2rem;
+        font-size: 1.8rem;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -48,7 +60,6 @@ except FileNotFoundError:
 # --- SIDEBAR: USER CONTROLS ---
 st.sidebar.title("🎛️ Control Panel")
 
-# 1. Model Selector
 engine_mode = st.sidebar.radio(
     "Select AI Engine:",
     ["🛡️ Validator (Audit Mode)", "🧠 Intelligence (Strategy Mode)"],
@@ -58,7 +69,6 @@ engine_mode = st.sidebar.radio(
 st.sidebar.markdown("---")
 st.sidebar.subheader("📝 Product Specs")
 
-# 2. Input Fields
 input_price = st.sidebar.number_input("Listed Price ($)", min_value=10.0, value=1500.0, step=50.0)
 input_rating = st.sidebar.slider("Customer Rating (Stars)", 1.0, 5.0, 4.0, step=0.1)
 input_sales = st.sidebar.number_input("Monthly Sales Volume", min_value=0, value=500)
@@ -94,56 +104,52 @@ if st.button("✨ Generate Market Analysis", type="primary"):
     active_model = model_v if engine_mode.startswith("🛡️") else model_i
     prediction = active_model.predict(final_input)[0]
     
-    # Calculate Expected Price (The User's "Math" Price) vs AI Price
+    # Logic Checks
     user_math_price = input_price * (1 - input_discount/100)
     diff = prediction - user_math_price
     
-    # --- 3. TOP METRICS ROW ---
+    # --- 3. RESULTS DISPLAY ---
+    st.markdown("---")
     col1, col2, col3 = st.columns(3)
     
     with col1:
         st.metric("AI Predicted Value", f"${prediction:,.2f}", help="The price the AI thinks this product is worth.")
         
     with col2:
-        # Smart Logic for Colors
         if engine_mode.startswith("🛡️"):
             label = "Deviation from Expected"
-            delta_color = "inverse" # Red is bad (high error)
+            delta_color = "inverse"
         else:
-            # Intelligence Mode: Positive Diff means AI thinks it's worth MORE (Good Deal)
             label = "Market Value Gap"
-            delta_color = "normal" # Green is good (Undervalued)
-            
+            delta_color = "normal" 
         st.metric(label, f"${diff:,.2f}", delta_color=delta_color)
 
     with col3:
         confidence = "99.75%" if engine_mode.startswith("🛡️") else "99.68%"
         st.metric("Model Accuracy", confidence, help="R² Score on Test Data")
 
-    # --- 4. THE VERDICT BANNER ---
+    # Verdict Banner
     if not engine_mode.startswith("🛡️"):
-        if diff > 0:
-            st.success(f"✅ **Good Deal:** This product is undervalued by **${diff:,.2f}**. The AI suggests the market would pay more.")
-        elif diff < 0:
-            st.warning(f"⚠️ **Overpriced:** This product is listed **${abs(diff):,.2f}** above its fair market value.")
+        if diff > 50:
+            st.success(f"✅ **Strong Buy:** Undervalued by **${diff:,.2f}**.")
+        elif diff < -50:
+            st.warning(f"⚠️ **Caution:** Overpriced by **${abs(diff):,.2f}**.")
         else:
-            st.info("⚖️ **Fair Price:** The listed price matches the market expectation perfectly.")
+            st.info("⚖️ **Fair Price:** Matches market expectations.")
     
-    st.markdown("---")
-
-    # --- 5. VISUALIZATION TABS ---
-    tab1, tab2 = st.tabs(["📈 Strategy Analysis", "📊 Market Position"])
+    # --- 4. VISUALIZATION TABS (FIXED UI) ---
+    st.markdown("### 📊 Deep Dive Analysis")
+    tab1, tab2 = st.tabs(["📈 Sensitivity (Star Rating)", "🏆 Competitor Benchmarking"])
     
     with tab1:
-        st.subheader("What is a Star Worth?")
-        st.caption("How would the predicted price change if the rating improved?")
+        # UX FIX: Combined Title and Description to remove the "Yonky" gap
+        st.markdown("**How much is a higher rating worth?**")
         
-        # --- SENSITIVITY ANALYSIS (The Innovation Feature) ---
+        # Sensitivity Logic
         scenario_data = []
         for r in range(1, 6):
             temp_input = input_data.copy()
             temp_input['rating'] = r
-            # Encode/Predict loop for sensitivity
             temp_enc = pd.get_dummies(temp_input, columns=['category'])
             temp_final = temp_enc.reindex(columns=target_features, fill_value=0)
             pred_price = active_model.predict(temp_final)[0]
@@ -151,23 +157,23 @@ if st.button("✨ Generate Market Analysis", type="primary"):
             
         df_scenario = pd.DataFrame(scenario_data)
         
-        # Plot Line Chart
+        # Improved Plot
         fig_sens = px.line(df_scenario, x='Rating', y='Predicted Price', markers=True, 
-                           title=f"Price Sensitivity for {input_category}",
-                           labels={'Predicted Price': 'Fair Market Value ($)'})
+                           labels={'Predicted Price': 'Estimated Value ($)'})
+        fig_sens.update_layout(xaxis=dict(tickmode='linear', tick0=1, dtick=1)) # Force integer ticks
         
-        # Highlight User's Current Position
+        # Highlight User's Position
         fig_sens.add_trace(go.Scatter(x=[input_rating], y=[prediction], mode='markers', 
-                                      marker=dict(size=15, color='red'), name='Current Rating'))
+                                      marker=dict(size=15, color='red'), name='Current Selection'))
         
         st.plotly_chart(fig_sens, use_container_width=True)
 
     with tab2:
-        st.subheader("Competitor Benchmarking")
-        # Generate Synthetic Context Data centered around the user's input
+        st.markdown("**Where does this product fit in the market hierarchy?**")
+        
+        # Context Data
         np.random.seed(42)
         base_price = input_price
-        
         context_data = pd.DataFrame({
             'Product': ['Competitor A', 'Competitor B', 'Competitor C', 'Market Leader', 'Budget Option', 'YOUR PRODUCT'],
             'Price': [base_price*0.9, base_price*1.1, base_price*0.85, base_price*1.3, base_price*0.6, prediction],
@@ -178,14 +184,18 @@ if st.button("✨ Generate Market Analysis", type="primary"):
         fig_market = px.scatter(context_data, x='Price', y='Rating', color='Type', size='Price',
                                 hover_name='Product', size_max=40,
                                 color_discrete_map={'Target': 'red', 'Rival': 'blue', 'Premium': 'purple', 'Budget': 'green'})
-        
-        # Add a vertical line for the predicted price
         fig_market.add_vline(x=prediction, line_dash="dash", line_color="green", annotation_text="AI Fair Value")
-        
         st.plotly_chart(fig_market, use_container_width=True)
 
+    # --- 5. LOGICAL IMPROVEMENT: REPORT DOWNLOAD ---
+    csv = input_data.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="📥 Download Analysis Report",
+        data=csv,
+        file_name='pricing_analysis.csv',
+        mime='text/csv',
+    )
+
 else:
-    # Landing Page State
-    st.info("👈 Please adjust the product details in the sidebar and click **Predict**.")
-    st.image("https://streamlit.io/images/brand/streamlit-logo-secondary-colormark-darktext.png", width=300)
-    st.caption("Powered by XGBoost & Thapar Institute of Engineering & Technology")
+    st.info("👈 Please adjust the product details in the sidebar and click **Generate Analysis**.")
+    st.caption("Powered by XGBoost | Thapar Institute of Engineering & Technology")
