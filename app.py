@@ -39,7 +39,7 @@ st.sidebar.markdown("---")
 st.sidebar.header("Product Details")
 
 # 2. Input Fields
-input_price = st.sidebar.number_input("Listed Price (₹ or $)", min_value=10.0, value=1500.0, step=50.0)
+input_price = st.sidebar.number_input("Listed Price ($)", min_value=10.0, value=1500.0, step=50.0)
 input_rating = st.sidebar.slider("Customer Rating", 1.0, 5.0, 4.0)
 input_sales = st.sidebar.number_input("Sales Volume (Monthly)", min_value=0, value=500)
 input_category = st.sidebar.selectbox("Category", cat_options)
@@ -119,4 +119,5 @@ if st.button("✨ Predict Market Price", type="primary"):
     st.plotly_chart(fig, use_container_width=True)
 
 else:
+
     st.info("👈 Adjust parameters in the sidebar and click Predict!")
