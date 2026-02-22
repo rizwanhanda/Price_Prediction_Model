@@ -10,7 +10,7 @@ st.set_page_config(page_title="🚀 AI Pricing Intelligence Pro", layout="wide")
 # --- LOAD THE SYSTEM BUNDLE ---
 @st.cache_resource
 def load_system():
-    # This reads the bundle containing your 76.4% model and baselines
+    # This reads the bundle containing your 76.4% normalized model
     with open('project_bundle.pkl', 'rb') as f:
         return pickle.load(f)
 
@@ -74,18 +74,18 @@ if st.button("✨ Generate AI Valuation", type="primary"):
     input_dict['screen_inches'] = float(inches)
     input_dict['is_wireless'] = 1.0 if is_wireless else 0.0
 
-    # 3. IRONCLAD STRATEGY LOGIC (The Anti-Cliff Fix)
+    # 3. IRONCLAD NORMALIZED LOGIC (The HP $11k Fix)
     if not engine_mode.startswith("🛡️"):
-        # Neutralize Rating Noise: Compresses rating impact to prevent price crashes
+        # Neutralize Rating Noise: Prevents price cliffs
         input_dict['rating_neutral'] = 3.5 + (input_rating * 0.1) if input_rating > 3.5 else input_rating
         
-        # Exponential Growth: Use the aggressive coefficients from Block 13
+        # BALANCED POWER: 1.4 power and 10/12 coefficients keep 'Elite' prices realistic
         if 'premium_score' in target_features:
-            input_dict['premium_score'] = (pow(ram, 1.5) * 15) + (np.sqrt(storage) * 20)
+            input_dict['premium_score'] = (pow(ram, 1.4) * 10) + (np.sqrt(storage) * 12)
             
-        # Target Encoding Baselines
-        input_dict['cat_baseline'] = cat_avgs.get(input_category, 800)
-        input_dict['brand_baseline'] = brand_avgs.get(input_brand, 800)
+        # ANTI-INFLATION CLIP: Caps the baseline impact at $1500 to stop brand-runaway prices
+        input_dict['cat_baseline'] = min(cat_avgs.get(input_category, 800), 1500)
+        input_dict['brand_baseline'] = min(brand_avgs.get(input_brand, 800), 1500)
 
     # 4. One-Hot Mapping
     if f"category_{input_category}" in input_dict: input_dict[f"category_{input_category}"] = 1.0
