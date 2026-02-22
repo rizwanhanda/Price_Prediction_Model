@@ -22,12 +22,12 @@ try:
     cat_options = bundle['category_options']
     brand_options = bundle['brand_options']
     
-    # SAFETY FIX: Using .get() prevents the 'cat_averages' KeyError crash
+    # Baseline dictionaries for Strategy Mode
     cat_avgs = bundle.get('cat_averages', {})
     brand_avgs = bundle.get('brand_averages', {})
     
     if not cat_avgs:
-        st.error("⚠️ Data Sync Error: 'cat_averages' not found in bundle. Please re-run Block 15 in Colab and re-upload.")
+        st.error("⚠️ Data Sync Error: 'cat_averages' not found. Please re-run Block 15 in Colab and re-upload.")
         st.stop()
         
 except Exception as e:
@@ -46,14 +46,16 @@ input_sales = st.sidebar.number_input("Est. Monthly Sales", min_value=0, value=1
 
 # Hardware Specs UI
 st.sidebar.subheader("📐 Hardware Specs")
-ram = st.sidebar.number_input("RAM (GB)", 0, 128, 8, step=4) if input_category == "Laptop" else 0
-storage = st.sidebar.number_input("Storage (GB)", 0, 2048, 256, step=64) if input_category == "Laptop" else 0
-inches = st.sidebar.number_input("Screen Size (Inches)", 0.0, 100.0, 14.0, step=0.5) if input_category in ["Laptop", "Monitor", "TV"] else 0.0
-is_wireless = st.sidebar.checkbox("Wireless / Bluetooth?", value=True)
+ram = st.sidebar.number_input("RAM (GB)", 0, 128, 32, step=4) if input_category == "Laptop" else 0
+storage = st.sidebar.number_input("Storage (GB)", 0, 2048, 1024, step=64) if input_category == "Laptop" else 0
+inches = st.sidebar.number_input("Screen Size (Inches)", 0.0, 100.0, 16.0, step=0.5) if input_category in ["Laptop", "Monitor", "TV"] else 0.0
+is_wireless = st.sidebar.checkbox("Wireless / Bluetooth Features?", value=True)
 
 if engine_mode.startswith("🛡️"):
-    input_price = st.sidebar.number_input("Listed MSRP ($)", value=500.0)
-    input_discount = st.sidebar.slider("Discount (%)", 0, 100, 20)
+    input_price = st.sidebar.number_input("Listed MSRP ($)", value=1200.0)
+    input_discount = st.sidebar.slider("Discount (%)", 0, 100, 15)
+else:
+    input_price = st.sidebar.number_input("Target Price for Analysis ($)", value=1200.0)
 
 # --- MAIN DASHBOARD ---
 st.title("🚀 AI-Powered Pricing Intelligence Dashboard")
@@ -64,7 +66,7 @@ if st.button("✨ Generate AI Valuation", type="primary"):
     target_features = feats_v if engine_mode.startswith("🛡️") else feats_i
     input_dict = {col: 0.0 for col in target_features}
     
-    # 2. Map core features
+    # 2. Map standard features
     input_dict['sales_volume'] = float(input_sales)
     input_dict['rating'] = float(input_rating)
     input_dict['ram_gb'] = float(ram)
@@ -72,17 +74,18 @@ if st.button("✨ Generate AI Valuation", type="primary"):
     input_dict['screen_inches'] = float(inches)
     input_dict['is_wireless'] = 1.0 if is_wireless else 0.0
 
-    # 3. LOG-POWER LOGIC: This ensures high RAM/Storage drives price UP
+    # 3. PREMIUM ELASTICITY LOGIC (The Fix)
     if not engine_mode.startswith("🛡️"):
-        # Target Encoding
+        # Target Encoding Baselines
         input_dict['cat_baseline'] = cat_avgs.get(input_category, np.mean(list(cat_avgs.values())))
         input_dict['brand_baseline'] = brand_avgs.get(input_brand, np.mean(list(brand_avgs.values())))
         
-        # FIX: The model now looks for 'hw_power' (log-scaled)
-        if 'hw_power' in target_features:
-            input_dict['hw_power'] = np.log1p(ram * 10 + storage * 0.5)
+        # Exponential Growth: Matches latest Block 13
+        # pow(ram, 1.5) ensures 32GB is significantly more valuable than 16GB
+        if 'premium_score' in target_features:
+            input_dict['premium_score'] = (pow(ram, 1.5) * 5) + (np.sqrt(storage) * 10)
 
-    # 4. One-Hot Mapping
+    # 4. One-Hot Category/Brand Mapping
     if f"category_{input_category}" in input_dict: input_dict[f"category_{input_category}"] = 1.0
     if f"brand_refined_{input_brand}" in input_dict: input_dict[f"brand_refined_{input_brand}"] = 1.0
 
@@ -100,17 +103,22 @@ if st.button("✨ Generate AI Valuation", type="primary"):
 
     # --- DISPLAY RESULTS ---
     col1, col2, col3 = st.columns(3)
-    with col1: st.metric("Predicted Price", f"${prediction:,.2f}")
+    with col1: st.metric("Predicted Market Value", f"${prediction:,.2f}")
     with col2:
-        # Better delta logic for Strategy mode
         if engine_mode.startswith("🛡️"):
-            val = prediction - (input_price * (1-input_discount/100))
-            st.metric("Audit Deviation", f"${val:,.2f}")
+            current_cost = input_price * (1 - input_discount/100)
+            delta = prediction - current_cost
+            st.metric("Price Deviation", f"${delta:,.2f}")
         else:
-            st.metric("Market Positioning", "Premium" if prediction > 1000 else "Standard")
-    with col3: st.metric("Model Confidence", "99.7%" if engine_mode.startswith("🛡️") else "83.8%")
+            status = "Elite / Premium" if prediction > 1100 else "Mainstream"
+            st.metric("Market Tier", status)
+    with col3: st.metric("Confidence Score", "99.7%" if engine_mode.startswith("🛡️") else "83.8%")
 
-    st.subheader("📊 Market Analysis")
-    fig = px.scatter(x=[prediction*0.7, prediction, prediction*1.3], y=[3.5, input_rating, 4.8], 
-                     color=["Budget", "Your Product", "Premium"], size=[10, 20, 10], template="plotly_dark")
+    st.subheader("📊 Price Elasticity Analysis")
+    viz_data = pd.DataFrame({
+        'Segment': ['Market Average', 'Your Configuration', 'Premium Ceiling'],
+        'Price': [prediction * 0.8, prediction, prediction * 1.2],
+        'Rating': [3.8, input_rating, 4.9]
+    })
+    fig = px.scatter(viz_data, x='Price', y='Rating', color='Segment', size=[15, 30, 15], template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
