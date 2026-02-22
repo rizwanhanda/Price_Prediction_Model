@@ -10,6 +10,7 @@ st.set_page_config(page_title="🚀 AI Pricing Intelligence Pro", layout="wide")
 # --- LOAD THE SYSTEM BUNDLE ---
 @st.cache_resource
 def load_system():
+    # This reads the bundle containing your 76.4% model and baselines
     with open('project_bundle.pkl', 'rb') as f:
         return pickle.load(f)
 
@@ -65,7 +66,7 @@ if st.button("✨ Generate AI Valuation", type="primary"):
     target_features = feats_v if engine_mode.startswith("🛡️") else feats_i
     input_dict = {col: 0.0 for col in target_features}
     
-    # 2. Map standard features
+    # 2. Map core features
     input_dict['sales_volume'] = float(input_sales)
     input_dict['rating'] = float(input_rating)
     input_dict['ram_gb'] = float(ram)
@@ -73,18 +74,18 @@ if st.button("✨ Generate AI Valuation", type="primary"):
     input_dict['screen_inches'] = float(inches)
     input_dict['is_wireless'] = 1.0 if is_wireless else 0.0
 
-    # 3. SMOOTH-ELASTICITY LOGIC (The Anti-Cliff Fix)
+    # 3. IRONCLAD STRATEGY LOGIC (The Anti-Cliff Fix)
     if not engine_mode.startswith("🛡️"):
-        # Target Encoding Baselines
-        input_dict['cat_baseline'] = cat_avgs.get(input_category, 500)
-        input_dict['brand_baseline'] = brand_avgs.get(input_brand, 500)
+        # Neutralize Rating Noise: Compresses rating impact to prevent price crashes
+        input_dict['rating_neutral'] = 3.5 + (input_rating * 0.1) if input_rating > 3.5 else input_rating
         
-        # Log-Power scaling to prevent price crashes on lower ratings
-        input_dict['smooth_rating'] = np.log1p(input_rating)
-        
-        # Exponential Growth: Matches Block 13 coefficients
+        # Exponential Growth: Use the aggressive coefficients from Block 13
         if 'premium_score' in target_features:
-            input_dict['premium_score'] = (pow(ram, 1.5) * 8) + (np.sqrt(storage) * 12)
+            input_dict['premium_score'] = (pow(ram, 1.5) * 15) + (np.sqrt(storage) * 20)
+            
+        # Target Encoding Baselines
+        input_dict['cat_baseline'] = cat_avgs.get(input_category, 800)
+        input_dict['brand_baseline'] = brand_avgs.get(input_brand, 800)
 
     # 4. One-Hot Mapping
     if f"category_{input_category}" in input_dict: input_dict[f"category_{input_category}"] = 1.0
@@ -108,14 +109,13 @@ if st.button("✨ Generate AI Valuation", type="primary"):
     with col2:
         if engine_mode.startswith("🛡️"):
             current_cost = input_price * (1 - input_discount/100)
-            delta = prediction - current_cost
-            st.metric("Price Deviation", f"${delta:,.2f}")
+            st.metric("Price Deviation", f"${(prediction - current_cost):,.2f}")
         else:
             status = "Elite / Premium" if prediction > 1000 else "Mainstream"
             st.metric("Market Tier", status)
-    with col3: st.metric("Confidence Score", "99.7%" if engine_mode.startswith("🛡️") else "83.8%")
+    with col3: st.metric("Confidence Score", "99.7%" if engine_mode.startswith("🛡️") else "76.4%")
 
-    st.subheader("📊 Competitive Price Analysis")
+    st.subheader("📊 Price Stability Analysis")
     viz_data = pd.DataFrame({
         'Segment': ['Budget Avg', 'Your Product AI Valuation', 'Premium Ceiling'],
         'Price': [prediction * 0.75, prediction, prediction * 1.25],
