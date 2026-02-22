@@ -22,12 +22,12 @@ try:
     cat_options = bundle['category_options']
     brand_options = bundle['brand_options']
     
-    # Baseline dictionaries for Strategy Mode
+    # Knowledge Base Baselines
     cat_avgs = bundle.get('cat_averages', {})
     brand_avgs = bundle.get('brand_averages', {})
     
     if not cat_avgs:
-        st.error("⚠️ Data Sync Error: 'cat_averages' not found. Please re-run Block 15 in Colab and re-upload.")
+        st.error("⚠️ Data Sync Error: 'cat_averages' not found. Please re-run Block 15 in Colab.")
         st.stop()
         
 except Exception as e:
@@ -59,7 +59,6 @@ else:
 
 # --- MAIN DASHBOARD ---
 st.title("🚀 AI-Powered Pricing Intelligence Dashboard")
-st.markdown(f"**Current Engine:** {engine_mode}")
 
 if st.button("✨ Generate AI Valuation", type="primary"):
     # 1. Blueprint selection
@@ -74,18 +73,20 @@ if st.button("✨ Generate AI Valuation", type="primary"):
     input_dict['screen_inches'] = float(inches)
     input_dict['is_wireless'] = 1.0 if is_wireless else 0.0
 
-    # 3. PREMIUM ELASTICITY LOGIC (The Fix)
+    # 3. SMOOTH-ELASTICITY LOGIC (The Anti-Cliff Fix)
     if not engine_mode.startswith("🛡️"):
         # Target Encoding Baselines
-        input_dict['cat_baseline'] = cat_avgs.get(input_category, np.mean(list(cat_avgs.values())))
-        input_dict['brand_baseline'] = brand_avgs.get(input_brand, np.mean(list(brand_avgs.values())))
+        input_dict['cat_baseline'] = cat_avgs.get(input_category, 500)
+        input_dict['brand_baseline'] = brand_avgs.get(input_brand, 500)
         
-        # Exponential Growth: Matches latest Block 13
-        # pow(ram, 1.5) ensures 32GB is significantly more valuable than 16GB
+        # Log-Power scaling to prevent price crashes on lower ratings
+        input_dict['smooth_rating'] = np.log1p(input_rating)
+        
+        # Exponential Growth: Matches Block 13 coefficients
         if 'premium_score' in target_features:
-            input_dict['premium_score'] = (pow(ram, 1.5) * 5) + (np.sqrt(storage) * 10)
+            input_dict['premium_score'] = (pow(ram, 1.5) * 8) + (np.sqrt(storage) * 12)
 
-    # 4. One-Hot Category/Brand Mapping
+    # 4. One-Hot Mapping
     if f"category_{input_category}" in input_dict: input_dict[f"category_{input_category}"] = 1.0
     if f"brand_refined_{input_brand}" in input_dict: input_dict[f"brand_refined_{input_brand}"] = 1.0
 
@@ -110,15 +111,15 @@ if st.button("✨ Generate AI Valuation", type="primary"):
             delta = prediction - current_cost
             st.metric("Price Deviation", f"${delta:,.2f}")
         else:
-            status = "Elite / Premium" if prediction > 1100 else "Mainstream"
+            status = "Elite / Premium" if prediction > 1000 else "Mainstream"
             st.metric("Market Tier", status)
     with col3: st.metric("Confidence Score", "99.7%" if engine_mode.startswith("🛡️") else "83.8%")
 
-    st.subheader("📊 Price Elasticity Analysis")
+    st.subheader("📊 Competitive Price Analysis")
     viz_data = pd.DataFrame({
-        'Segment': ['Market Average', 'Your Configuration', 'Premium Ceiling'],
-        'Price': [prediction * 0.8, prediction, prediction * 1.2],
-        'Rating': [3.8, input_rating, 4.9]
+        'Segment': ['Budget Avg', 'Your Product AI Valuation', 'Premium Ceiling'],
+        'Price': [prediction * 0.75, prediction, prediction * 1.25],
+        'Rating': [3.5, input_rating, 4.8]
     })
     fig = px.scatter(viz_data, x='Price', y='Rating', color='Segment', size=[15, 30, 15], template="plotly_dark")
     st.plotly_chart(fig, use_container_width=True)
